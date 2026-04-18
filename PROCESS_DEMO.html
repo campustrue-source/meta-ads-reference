@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>메타 광고 리서치 파이프라인 — 프로세스 데모</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg-card: #131827;
+    --bg-soft: #1a2033;
+    --border: #2a3348;
+    --fg: #e8ecf5;
+    --fg-dim: #8892a6;
+    --accent: #7c9fff;
+    --accent-soft: #1e2a4a;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --error: #f87171;
+    --purple: #c084fc;
+    --pink: #f472b6;
+    --cyan: #22d3ee;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  code {
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    background: var(--bg-soft);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.88em;
+    color: var(--cyan);
+  }
+
+  /* === HERO === */
+  .hero {
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 80px 24px;
+    background: radial-gradient(ellipse at top, rgba(124,159,255,0.12), transparent 60%);
+    position: relative;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(124,159,255,0.08) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(192,132,252,0.08) 0%, transparent 40%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    display: inline-block;
+    padding: 6px 16px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: 100px;
+    font-size: 0.85em;
+    color: var(--accent);
+    margin-bottom: 24px;
+    font-weight: 500;
+  }
+  .hero h1 {
+    font-size: clamp(2em, 5vw, 3.8em);
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #e8ecf5 0%, #7c9fff 50%, #c084fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
+  }
+  .hero p {
+    font-size: 1.2em;
+    color: var(--fg-dim);
+    max-width: 680px;
+    margin-bottom: 48px;
+  }
+
+  /* === FLOW DIAGRAM === */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1100px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+  .flow-node {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 28px;
+    min-width: 180px;
+    text-align: center;
+    transition: all 0.3s;
+    position: relative;
+  }
+  .flow-node:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+    box-shadow: 0 20px 40px rgba(124,159,255,0.15);
+  }
+  .flow-node .icon {
+    font-size: 2.2em;
+    margin-bottom: 10px;
+  }
+  .flow-node .label {
+    font-weight: 600;
+    font-size: 1.05em;
+    margin-bottom: 4px;
+  }
+  .flow-node .sub {
+    font-size: 0.82em;
+    color: var(--fg-dim);
+  }
+  .flow-arrow {
+    font-size: 1.8em;
+    color: var(--accent);
+    opacity: 0.6;
+  }
+
+  /* === SECTIONS === */
+  .section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 100px 24px;
+  }
+  .section-label {
+    display: inline-block;
+    color: var(--accent);
+    font-size: 0.85em;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .section h2 {
+    font-size: 2.4em;
+    font-weight: 800;
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+  }
+  .section-desc {
+    font-size: 1.1em;
+    color: var(--fg-dim);
+    max-width: 720px;
+    margin-bottom: 56px;
+  }
+
+  /* === STEP CARDS === */
+  .step-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+    margin-top: 40px;
+  }
+  .step-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    transition: all 0.3s;
+  }
+  .step-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.95em;
+    margin-bottom: 16px;
+  }
+  .step-card h3 {
+    font-size: 1.3em;
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+  .step-card p {
+    color: var(--fg-dim);
+    font-size: 0.95em;
+  }
+
+  /* === INTERACTIVE DEMO === */
+  .demo {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-top: 48px;
+  }
+  .demo-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 20px;
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--border);
+  }
+  .demo-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .demo-dot.red { background: #ff5f57; }
+  .demo-dot.yellow { background: #febc2e; }
+  .demo-dot.green { background: #28c840; }
+  .demo-title {
+    margin-left: auto;
+    font-size: 0.85em;
+    color: var(--fg-dim);
+  }
+  .demo-body {
+    padding: 40px;
+  }
+
+  /* === STREAMLIT MOCK === */
+  .mock-title {
+    font-size: 1.6em;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .mock-caption {
+    color: var(--fg-dim);
+    font-size: 0.92em;
+    margin-bottom: 32px;
+  }
+  .mock-field {
+    margin-bottom: 20px;
+  }
+  .mock-label {
+    display: block;
+    font-size: 0.9em;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--fg);
+  }
+  .mock-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg);
+    font-size: 0.95em;
+    font-family: inherit;
+  }
+  .mock-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  textarea.mock-input {
+    min-height: 80px;
+    resize: vertical;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 0.85em;
+  }
+  .mock-button {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--accent) 0%, #6a8eff 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mock-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(124,159,255,0.3);
+  }
+  .mock-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* === STEPPER === */
+  .stepper {
+    margin-top: 32px;
+    padding: 24px;
+    background: var(--bg-soft);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .stepper-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    font-size: 1em;
+    font-weight: 500;
+    transition: all 0.3s;
+  }
+  .stepper-item .status-icon {
+    font-size: 1.3em;
+    width: 32px;
+    text-align: center;
+  }
+  .stepper-item.pending { color: var(--fg-dim); }
+  .stepper-item.running {
+    color: var(--accent);
+  }
+  .stepper-item.running .status-icon {
+    animation: spin 1.5s linear infinite;
+  }
+  .stepper-item.done { color: var(--success); }
+  .stepper-item.error { color: var(--error); }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* === RESULT === */
+  .result {
+    margin-top: 24px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(74,222,128,0.1), rgba(74,222,128,0.02));
+    border: 1px solid rgba(74,222,128,0.3);
+    border-radius: 12px;
+    display: none;
+  }
+  .result.show { display: block; }
+  .result-title {
+    color: var(--success);
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .result-link {
+    color: var(--accent);
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 12px;
+  }
+  .result-link:hover { text-decoration: underline; }
+  .result-transcript {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 0.85em;
+    white-space: pre-wrap;
+    color: var(--fg-dim);
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  /* === TABLE === */
+  .output-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88em;
+    margin-top: 24px;
+  }
+  .output-table th {
+    background: var(--bg-soft);
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .output-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--fg-dim);
+  }
+  .output-table tr:hover td { background: var(--bg-soft); color: var(--fg); }
+
+  /* === STACK === */
+  .stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 32px;
+  }
+  .chip {
+    padding: 8px 16px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-size: 0.88em;
+    color: var(--fg);
+  }
+  .chip .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background: var(--accent);
+  }
+
+  /* === TERMINAL === */
+  .terminal {
+    background: #050810;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 0.85em;
+    line-height: 1.7;
+    margin-top: 24px;
+    overflow-x: auto;
+  }
+  .term-line { white-space: pre; }
+  .term-cmd { color: var(--accent); }
+  .term-ok { color: var(--success); }
+  .term-info { color: var(--fg-dim); }
+  .term-warn { color: var(--warning); }
+  .term-hl { color: var(--cyan); }
+
+  /* === FOOTER === */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--fg-dim);
+    font-size: 0.9em;
+  }
+
+  /* === UTIL === */
+  .row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 768px) {
+    .row-2 { grid-template-columns: 1fr; }
+    .flow { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <span class="hero-tag">✨ Meta Ad Research Pipeline</span>
+  <h1>키워드 하나로<br>광고 스크립트까지 자동화</h1>
+  <p>Meta 광고 라이브러리에서 영상을 수집하고, Whisper 로 스크립트를 뽑아 Notion DB 에 쌓는 로컬 파이프라인.</p>
+
+  <div class="flow">
+    <div class="flow-node">
+      <div class="icon">🔑</div>
+      <div class="label">키워드</div>
+      <div class="sub">"nike", "아디다스"</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">
+      <div class="icon">🎬</div>
+      <div class="label">Meta Ad Library</div>
+      <div class="sub">영상 광고 URL 수집</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">
+      <div class="icon">🎙️</div>
+      <div class="label">Whisper</div>
+      <div class="sub">음성 → 텍스트</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">
+      <div class="icon">📝</div>
+      <div class="label">Notion DB</div>
+      <div class="sub">자동 적재</div>
+    </div>
+  </div>
+</section>
+
+<!-- STEP 1 -->
+<section class="section">
+  <span class="section-label">Step 1 · Scraper</span>
+  <h2>Apify 액터로 영상 광고 일괄 수집</h2>
+  <p class="section-desc">CLI 한 줄이면 키워드별로 Meta Ad Library 영상 광고를 뽑아 CSV + JSON 으로 저장합니다.</p>
+
+  <div class="demo">
+    <div class="demo-header">
+      <span class="demo-dot red"></span>
+      <span class="demo-dot yellow"></span>
+      <span class="demo-dot green"></span>
+      <span class="demo-title">terminal — scrape_videos.py</span>
+    </div>
+    <div class="demo-body">
+      <div class="terminal">
+<div class="term-line"><span class="term-cmd">$</span> py scrape_videos.py nike --country KR --limit 30</div>
+<div class="term-line"><span class="term-info">▶ Apify 액터 실행: keyword='nike', country=KR, mediaType=video</span></div>
+<div class="term-line"><span class="term-info">  (최초 30개만 저장. 액터는 더 긁을 수 있고 그만큼 과금됨)</span></div>
+<div class="term-line"><span class="term-warn">  💰 과금: 데이터셋에 저장되는 광고 1개당 약 $0.01</span></div>
+<div class="term-line"><span class="term-ok">✅ 실행 완료. dataset=abc123xyz, status=SUCCEEDED</span></div>
+<div class="term-line"><span class="term-hl">📦 수집 아이템: 30개</span></div>
+<div class="term-line"><span class="term-info">💾 원본 JSON: output/20260418_094512_nike_raw.json</span></div>
+<div class="term-line"><span class="term-hl">🎬 영상 광고 CSV: output/20260418_094512_nike_videos.csv  (27개)</span></div>
+<div class="term-line"> </div>
+<div class="term-line"><span class="term-info">📺 영상 URL 샘플 (최대 5개):</span></div>
+<div class="term-line"><span class="term-info">  · [Nike] https://video-arn2-1.xx.fbcdn.net/v/t42.../...mp4</span></div>
+<div class="term-line"><span class="term-info">  · [Nike Running] https://video-ssn1-1.xx.fbcdn.net/...</span></div>
+<div class="term-line"><span class="term-info">  · [Nike Women] https://video-icn1-1.xx.fbcdn.net/...</span></div>
+      </div>
+
+      <table class="output-table">
+        <thead>
+          <tr><th>page_name</th><th>ad_text</th><th>cta_text</th><th>video_hd_url</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Nike</td><td>Just Do It. 새로운 컬렉션 만나보기</td><td>Shop Now</td><td>video-arn2-1.xx.fbcdn...</td></tr>
+          <tr><td>Nike Running</td><td>러닝의 모든 것, 나이키에서</td><td>Learn More</td><td>video-ssn1-1.xx.fbcdn...</td></tr>
+          <tr><td>Nike Women</td><td>너의 한계를 넘어서</td><td>Shop Now</td><td>video-icn1-1.xx.fbcdn...</td></tr>
+          <tr><td>Nike Training</td><td>집에서 프로처럼 훈련하기</td><td>Download App</td><td>video-gru2-1.xx.fbcdn...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- STEP 2 -->
+<section class="section">
+  <span class="section-label">Step 2 · Transcriber</span>
+  <h2>URL 하나 → 스크립트 + Notion 저장까지 원클릭</h2>
+  <p class="section-desc">Streamlit 웹앱. 영상 URL 을 붙여넣고 실행 버튼만 누르면 4단계가 순서대로 돌아갑니다.</p>
+
+  <div class="demo">
+    <div class="demo-header">
+      <span class="demo-dot red"></span>
+      <span class="demo-dot yellow"></span>
+      <span class="demo-dot green"></span>
+      <span class="demo-title">localhost:8501 — Streamlit</span>
+    </div>
+    <div class="demo-body">
+      <div class="mock-title">🎬 Meta 광고 → Notion 트랜스크립터</div>
+      <div class="mock-caption">Meta CDN 또는 Ad Library URL을 붙여넣으면 Whisper로 스크립트를 뽑아 Notion DB에 저장합니다.</div>
+
+      <div class="mock-field">
+        <label class="mock-label">릴스 이름</label>
+        <input class="mock-input" id="reelName" value="나이키_20260418_러닝광고A안" placeholder="예: 포커스인_20260418_A안">
+      </div>
+
+      <div class="mock-field">
+        <label class="mock-label">영상 URL</label>
+        <textarea class="mock-input" id="videoUrl" placeholder="https://video-*.xx.fbcdn.net/... 또는 https://www.facebook.com/ads/library/?id=...">https://video-arn2-1.xx.fbcdn.net/v/t42.1790-2/example_video.mp4</textarea>
+      </div>
+
+      <button class="mock-button" id="runBtn" onclick="runDemo()">실행</button>
+
+      <div class="stepper" id="stepper">
+        <div class="stepper-item pending" data-step="download">
+          <span class="status-icon">⏳</span>
+          <span>영상 다운로드</span>
+        </div>
+        <div class="stepper-item pending" data-step="audio">
+          <span class="status-icon">⏳</span>
+          <span>오디오 추출 (ffmpeg)</span>
+        </div>
+        <div class="stepper-item pending" data-step="transcribe">
+          <span class="status-icon">⏳</span>
+          <span>Whisper 스크립트 추출</span>
+        </div>
+        <div class="stepper-item pending" data-step="notion">
+          <span class="status-icon">⏳</span>
+          <span>Notion 적재</span>
+        </div>
+      </div>
+
+      <div class="result" id="result">
+        <div class="result-title">✅ 완료! Notion에 저장됐습니다.</div>
+        <a href="#" class="result-link">🔗 Notion 페이지 열기</a>
+        <div class="result-transcript">새로운 나이키 러닝 콜렉션을 소개합니다. 당신의 한계를 넘어서고 싶다면, 지금 바로 확인하세요. 가벼운 착용감과 뛰어난 쿠셔닝으로 당신의 러닝을 한 단계 업그레이드합니다. Just Do It. 나이키닷컴에서 만나보세요.</div>
+      </div>
+
+      <p style="color: var(--fg-dim); font-size: 0.85em; margin-top: 20px; text-align: center;">
+        👆 실행 버튼을 눌러 파이프라인이 어떻게 흘러가는지 보세요 (데모)
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- PROCESS DETAIL -->
+<section class="section">
+  <span class="section-label">Under The Hood</span>
+  <h2>각 단계가 실제로 하는 일</h2>
+  <p class="section-desc">네 개의 모듈이 각자의 일만 담당하도록 분리. 한 단계가 실패해도 어디서 끊겼는지 바로 보입니다.</p>
+
+  <div class="step-grid">
+    <div class="step-card">
+      <div class="step-num">01</div>
+      <h3>영상 다운로드</h3>
+      <p>URL 타입을 자동 판별. <code>fbcdn.net</code>/<code>cdninstagram.com</code> 이면 <code>requests</code> 로 직접 스트리밍, <code>facebook.com/ads/library</code> 면 <code>yt-dlp</code> 로 우회. 403/404/410 은 "URL 만료" 로 친절하게 안내.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">02</div>
+      <h3>오디오 추출</h3>
+      <p><code>ffmpeg</code> 으로 mono 16kHz mp3 추출. 64kbps 로 시작해서 Whisper 25MB 제한 넘으면 48→32→24→16kbps 로 자동 낮춤. Windows 한글 경로 cp949 크래시 방지 처리 포함.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">03</div>
+      <h3>Whisper 스크립트</h3>
+      <p>OpenAI <code>whisper-1</code> 모델에 <code>language=ko</code> 로 호출. 인증/레이트리밋/사이즈초과/네트워크 에러를 각각 한국어 메시지로 분류해서 표시.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">04</div>
+      <h3>Notion 적재</h3>
+      <p>2025-09+ Notion API 의 <code>data_source</code> 모델 지원. DB ID 를 넣어도, data_source ID 를 넣어도 알아서 resolve. 2000자 초과 스크립트는 chunk 로 쪼개서 rich_text 에 저장 + 페이지 본문에도 전문 백업.</p>
+    </div>
+  </div>
+</section>
+
+<!-- KEYS -->
+<section class="section">
+  <span class="section-label">Setup · 3분이면 끝</span>
+  <h2>API 키 5개만 채우면 됨</h2>
+  <p class="section-desc">아래 키들을 <code>.env</code> 파일 두 개에 나눠서 넣고, Python 가상환경에 의존성 설치하면 준비 완료.</p>
+
+  <div class="row-2">
+    <div class="step-card">
+      <div class="step-num" style="background: rgba(34,211,238,0.15); color: var(--cyan);">S1</div>
+      <h3>메타레퍼런스/.env</h3>
+      <p style="margin-top: 8px;">
+        <code>APIFY_TOKEN</code><br>
+        <code>APIFY_PROXY_URL</code> (선택)
+      </p>
+      <p style="margin-top: 12px; font-size: 0.85em;">
+        Apify 콘솔 → Settings/Integrations 에서 토큰 복사.<br>
+        RESIDENTIAL 프록시는 Proxy → Groups 탭에서.
+      </p>
+    </div>
+    <div class="step-card">
+      <div class="step-num" style="background: rgba(192,132,252,0.15); color: var(--purple);">S2</div>
+      <h3>meta-ad-transcriber/.env</h3>
+      <p style="margin-top: 8px;">
+        <code>OPENAI_API_KEY</code><br>
+        <code>NOTION_TOKEN</code><br>
+        <code>NOTION_DATABASE_ID</code>
+      </p>
+      <p style="margin-top: 12px; font-size: 0.85em;">
+        OpenAI 플랫폼 + Notion Integration 에서 발급.<br>
+        DB 페이지에서 Integration 반드시 Connect.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section class="section">
+  <span class="section-label">Stack</span>
+  <h2>쓰인 기술</h2>
+  <p class="section-desc">로컬 단일 사용자용으로 최소한의 인프라만. DB·Redis 없이 파일시스템만.</p>
+
+  <div class="stack">
+    <div class="chip"><span class="dot"></span>Python 3.13</div>
+    <div class="chip"><span class="dot" style="background: #c084fc;"></span>Streamlit</div>
+    <div class="chip"><span class="dot" style="background: #f472b6;"></span>Apify SDK</div>
+    <div class="chip"><span class="dot" style="background: #22d3ee;"></span>OpenAI Whisper</div>
+    <div class="chip"><span class="dot" style="background: #4ade80;"></span>Notion API</div>
+    <div class="chip"><span class="dot" style="background: #fbbf24;"></span>ffmpeg</div>
+    <div class="chip"><span class="dot" style="background: #f87171;"></span>yt-dlp</div>
+    <div class="chip"><span class="dot"></span>requests</div>
+  </div>
+</section>
+
+<div class="footer">
+  Meta Ad Research Pipeline · 로컬 전용 · 외부 호스팅 없음
+</div>
+
+<script>
+  const steps = [
+    { id: 'download', label: '영상 다운로드', duration: 1800 },
+    { id: 'audio', label: '오디오 추출 (ffmpeg)', duration: 1400 },
+    { id: 'transcribe', label: 'Whisper 스크립트 추출', duration: 2600 },
+    { id: 'notion', label: 'Notion 적재', duration: 1200 },
+  ];
+
+  function setStep(id, status) {
+    const el = document.querySelector(`.stepper-item[data-step="${id}"]`);
+    el.classList.remove('pending', 'running', 'done', 'error');
+    el.classList.add(status);
+    const icon = el.querySelector('.status-icon');
+    if (status === 'pending') icon.textContent = '⏳';
+    else if (status === 'running') icon.textContent = '⚙️';
+    else if (status === 'done') icon.textContent = '✅';
+    else if (status === 'error') icon.textContent = '❌';
+  }
+
+  async function runDemo() {
+    const btn = document.getElementById('runBtn');
+    const result = document.getElementById('result');
+    btn.disabled = true;
+    btn.textContent = '실행 중...';
+    result.classList.remove('show');
+
+    steps.forEach(s => setStep(s.id, 'pending'));
+
+    for (const step of steps) {
+      setStep(step.id, 'running');
+      await new Promise(r => setTimeout(r, step.duration));
+      setStep(step.id, 'done');
+    }
+
+    result.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = '다시 실행';
+  }
+</script>
+
+</body>
+</html>
