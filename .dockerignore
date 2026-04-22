@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+.env.*
+**/__pycache__
+**/*.pyc
+**/*.pyo
+downloads/*
+!downloads/.gitkeep
+.vscode
+.idea
+.DS_Store
+Dockerfile
+.dockerignore

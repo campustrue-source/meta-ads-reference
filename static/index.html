@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Meta 광고 → Notion 트랜스크립터</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1f232c;
+    --border: #2a2f3a;
+    --text: #e6e8ec;
+    --muted: #9aa3b2;
+    --accent: #4c8dff;
+    --ok: #22c55e;
+    --err: #ef4444;
+    --warn: #f59e0b;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-2: #f0f2f5;
+      --border: #e2e5ea;
+      --text: #1a1d23;
+      --muted: #5b6473;
+      --accent: #2563eb;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  .caption { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  input[type=text], textarea {
+    width: 100%;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input[type=text]:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 96px; }
+  .field { margin-bottom: 14px; }
+  button {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .05s;
+  }
+  button:hover:not(:disabled) { opacity: 0.92; }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+  .steps { display: flex; flex-direction: column; gap: 10px; }
+  .step { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--border); }
+  .step .icon { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
+  .step .label { font-size: 14px; font-weight: 500; }
+  .step.running { border-color: var(--accent); }
+  .step.done .icon { color: var(--ok); }
+  .step.error { border-color: var(--err); }
+  .step.error .icon { color: var(--err); }
+  .spinner {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .alert { border-radius: 8px; padding: 12px 14px; font-size: 14px; line-height: 1.5; }
+  .alert.error { background: rgba(239, 68, 68, .12); border: 1px solid rgba(239, 68, 68, .4); color: #fecaca; }
+  .alert.success { background: rgba(34, 197, 94, .12); border: 1px solid rgba(34, 197, 94, .4); color: #bbf7d0; }
+  .alert.warn { background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .4); color: #fde68a; }
+  @media (prefers-color-scheme: light) {
+    .alert.error { color: #991b1b; }
+    .alert.success { color: #14532d; }
+    .alert.warn { color: #713f12; }
+  }
+  .alert a { color: inherit; text-decoration: underline; }
+  .hidden { display: none !important; }
+  .transcript {
+    width: 100%;
+    min-height: 240px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .row h3 { margin: 0; font-size: 15px; }
+  .ghost-btn {
+    width: auto;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .ghost-btn:hover:not(:disabled) { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎬 Meta 광고 → Notion 트랜스크립터</h1>
+  <div class="caption">Meta CDN 또는 Ad Library URL을 붙여넣으면 Whisper로 스크립트를 뽑아 Notion DB에 저장합니다.</div>
+
+  <div id="env-alert" class="alert error hidden"></div>
+
+  <div class="card" id="form-card">
+    <form id="run-form">
+      <div class="field">
+        <label for="name">릴스 이름</label>
+        <input id="name" type="text" placeholder="예: 포커스인_20250101_A안" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="url">영상 URL</label>
+        <textarea id="url" placeholder="https://video-*.xx.fbcdn.net/... 또는 https://www.facebook.com/ads/library/?id=..."></textarea>
+      </div>
+      <button id="submit-btn" type="submit">실행</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="steps" id="steps"></div>
+  </div>
+
+  <div id="error-alert" class="alert error hidden"></div>
+
+  <div id="success" class="hidden">
+    <div class="alert success" style="margin-bottom: 12px;">
+      완료! Notion에 저장됐습니다. <a id="page-link" href="#" target="_blank" rel="noopener">🔗 페이지 열기</a>
+    </div>
+    <div class="card">
+      <div class="row">
+        <h3>추출된 스크립트</h3>
+        <button type="button" class="ghost-btn" id="copy-btn">복사</button>
+      </div>
+      <div class="transcript" id="transcript"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STEPS = [
+  { key: "download",   label: "영상 다운로드" },
+  { key: "audio",      label: "오디오 추출" },
+  { key: "transcribe", label: "Whisper 스크립트 추출" },
+  { key: "notion",     label: "Notion 적재" },
+];
+
+const $ = (id) => document.getElementById(id);
+const stepsEl = $("steps");
+const form = $("run-form");
+const submitBtn = $("submit-btn");
+const nameInput = $("name");
+const urlInput = $("url");
+const errorAlert = $("error-alert");
+const envAlert = $("env-alert");
+const successEl = $("success");
+const pageLink = $("page-link");
+const transcriptEl = $("transcript");
+const copyBtn = $("copy-btn");
+
+function renderSteps(states) {
+  stepsEl.innerHTML = "";
+  for (const { key, label } of STEPS) {
+    const state = states[key] || "pending";
+    const row = document.createElement("div");
+    row.className = `step ${state}`;
+    row.innerHTML = `
+      <span class="icon">${iconFor(state)}</span>
+      <span class="label">${label}</span>
+    `;
+    stepsEl.appendChild(row);
+  }
+}
+
+function iconFor(state) {
+  if (state === "running") return '<span class="spinner"></span>';
+  if (state === "done")    return "✅";
+  if (state === "error")   return "❌";
+  return "⏳";
+}
+
+function setRunning(running) {
+  submitBtn.disabled = running;
+  nameInput.disabled = running;
+  urlInput.disabled = running;
+  submitBtn.textContent = running ? "실행 중..." : "실행";
+}
+
+function resetUI() {
+  errorAlert.classList.add("hidden");
+  successEl.classList.add("hidden");
+  renderSteps({});
+}
+
+async function checkHealth() {
+  try {
+    const res = await fetch("/api/health");
+    const body = await res.json();
+    if (!body.ok) {
+      envAlert.innerHTML = "<strong>실행 전에 다음을 해결해주세요:</strong><ul style='margin:8px 0 0 18px;padding:0;'>" +
+        body.problems.map((p) => `<li>${escapeHTML(p)}</li>`).join("") +
+        "</ul>";
+      envAlert.classList.remove("hidden");
+      submitBtn.disabled = true;
+    }
+  } catch (e) {
+    envAlert.textContent = "서버 상태 확인 실패: " + e.message;
+    envAlert.classList.remove("hidden");
+    submitBtn.disabled = true;
+  }
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function* readSSE(response) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buffer.indexOf("\n\n")) !== -1) {
+      const raw = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      const event = parseSSEBlock(raw);
+      if (event) yield event;
+    }
+  }
+}
+
+function parseSSEBlock(raw) {
+  let eventName = "message";
+  const dataLines = [];
+  for (const line of raw.split("\n")) {
+    if (line.startsWith("event:")) eventName = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+  }
+  if (!dataLines.length) return null;
+  try {
+    return { event: eventName, data: JSON.parse(dataLines.join("\n")) };
+  } catch {
+    return { event: eventName, data: dataLines.join("\n") };
+  }
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = nameInput.value.trim();
+  const url = urlInput.value.trim();
+  if (!name) { showError("입력", "릴스 이름을 입력해주세요."); return; }
+  if (!url)  { showError("입력", "영상 URL을 입력해주세요."); return; }
+
+  resetUI();
+  setRunning(true);
+
+  const states = Object.fromEntries(STEPS.map((s) => [s.key, "pending"]));
+  renderSteps(states);
+
+  try {
+    const res = await fetch("/api/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, url }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      let msg = text;
+      try { msg = JSON.parse(text).detail || text; } catch {}
+      showError("요청 실패", msg);
+      return;
+    }
+
+    for await (const { event, data } of readSSE(res)) {
+      if (event === "step") {
+        states[data.key] = data.status;
+        renderSteps(states);
+      } else if (event === "error") {
+        showError(data.stage, data.message);
+      } else if (event === "done") {
+        showSuccess(data.page_url, data.transcript);
+      }
+    }
+  } catch (err) {
+    showError("네트워크 오류", err.message || String(err));
+  } finally {
+    setRunning(false);
+  }
+});
+
+function showError(stage, message) {
+  errorAlert.innerHTML = `❌ <strong>${escapeHTML(stage)}</strong> 단계에서 실패했습니다.<div style="margin-top:6px;">${escapeHTML(message)}</div>`;
+  errorAlert.classList.remove("hidden");
+}
+
+function showSuccess(pageUrl, transcript) {
+  pageLink.href = pageUrl;
+  transcriptEl.textContent = transcript;
+  successEl.classList.remove("hidden");
+}
+
+copyBtn.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(transcriptEl.textContent);
+    copyBtn.textContent = "복사됨 ✓";
+    setTimeout(() => (copyBtn.textContent = "복사"), 1500);
+  } catch {
+    copyBtn.textContent = "복사 실패";
+  }
+});
+
+renderSteps({});
+checkHealth();
+</script>
+</body>
+</html>

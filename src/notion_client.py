@@ -15,10 +15,16 @@ from notion_client import Client
 from notion_client.errors import APIResponseError
 
 NOTION_TEXT_LIMIT = 2000
-TRANSCRIPT_PROP = "본문 스크립트"
-URL_PROP = "원본 URL"
-DATE_PROP = "수집일"
-TITLE_PROP_PREFERRED = "릴스 이름"
+TRANSCRIPT_PROP_CANDIDATES = ["본문 스크립트", "본문스크립트", "스크립트", "script"]
+URL_PROP_CANDIDATES = ["원본 URL", "원본url", "원본 url", "원본URL", "URL", "url"]
+DATE_PROP_CANDIDATES = ["수집일", "날짜", "date", "Date"]
+TITLE_PROP_CANDIDATES = ["릴스 이름", "릴스이름", "이름", "Name", "title", "Title"]
+
+# backwards-compat — 기존 상수 이름 유지
+TRANSCRIPT_PROP = TRANSCRIPT_PROP_CANDIDATES[0]
+URL_PROP = URL_PROP_CANDIDATES[0]
+DATE_PROP = DATE_PROP_CANDIDATES[0]
+TITLE_PROP_PREFERRED = TITLE_PROP_CANDIDATES[0]
 
 
 class NotionError(Exception):
@@ -89,9 +95,10 @@ def _resolve_data_source(client: Client, raw_id: str) -> tuple[str, dict[str, An
 
 
 def _find_title_property(properties: dict[str, Any]) -> str:
-    """Pick the title property: prefer the spec name, else the first title column."""
-    if properties.get(TITLE_PROP_PREFERRED, {}).get("type") == "title":
-        return TITLE_PROP_PREFERRED
+    """Pick the title property: prefer any of the candidate names, else the first title column."""
+    for name in TITLE_PROP_CANDIDATES:
+        if properties.get(name, {}).get("type") == "title":
+            return name
     for name, meta in properties.items():
         if meta.get("type") == "title":
             return name
@@ -138,18 +145,17 @@ def append_to_database(
     }
 
     transcript_chunks = _chunk_text(transcript)
-    use_transcript_property = schema.get(TRANSCRIPT_PROP, {}).get("type") == "rich_text"
+    transcript_prop = _find_property_by_type(schema, "rich_text", TRANSCRIPT_PROP_CANDIDATES)
+    use_transcript_property = transcript_prop is not None
     if use_transcript_property:
-        properties[TRANSCRIPT_PROP] = {"rich_text": _rich_text_blocks(transcript)}
+        properties[transcript_prop] = {"rich_text": _rich_text_blocks(transcript)}
 
     if source_url:
-        url_prop = _find_property_by_type(
-            schema, "url", [URL_PROP, "원본url", "원본 url", "원본URL", "URL", "url"]
-        )
+        url_prop = _find_property_by_type(schema, "url", URL_PROP_CANDIDATES)
         if url_prop:
             properties[url_prop] = {"url": source_url}
 
-    date_prop = _find_property_by_type(schema, "date", [DATE_PROP, "수집일"])
+    date_prop = _find_property_by_type(schema, "date", DATE_PROP_CANDIDATES)
     if date_prop:
         properties[date_prop] = {"date": {"start": date.today().isoformat()}}
 
